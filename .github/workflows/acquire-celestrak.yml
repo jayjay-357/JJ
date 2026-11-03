@@ -1,0 +1,62 @@
+name: Acquire CelesTrak orbital sample
+
+on:
+  workflow_dispatch:
+    inputs:
+      query_type:
+        description: CelesTrak query type
+        required: true
+        type: choice
+        options:
+          - GROUP
+          - NAME
+          - CATNR
+      query_value:
+        description: "Example: STATIONS, COSMOS 2251 DEB, or 25544"
+        required: true
+        type: string
+        default: STATIONS
+      max_records:
+        description: Maximum records retained (1-5000)
+        required: true
+        type: string
+        default: "300"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: celestrak-acquisition
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore CelesTrak cache
+        uses: actions/cache@v4
+        with:
+          path: data/celestrak-cache
+          key: celestrak-${{ inputs.query_type }}-${{ hashFiles('pyproject.toml') }}-${{ github.run_id }}
+          restore-keys: |
+            celestrak-${{ inputs.query_type }}-${{ hashFiles('pyproject.toml') }}-
+      - name: Acquire and validate
+        run: >-
+          python scripts/acquire_celestrak.py
+          --query-type "${{ inputs.query_type }}"
+          --query-value "${{ inputs.query_value }}"
+          --max-records "${{ inputs.max_records }}"
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-celestrak-${{ inputs.query_type }}-${{ github.run_id }}
+          path: |
+            data/celestrak-acquisition/orion_celestrak_sample.csv
+            data/celestrak-acquisition/acquisition_report.json
+          if-no-files-found: error
+          retention-days: 14
