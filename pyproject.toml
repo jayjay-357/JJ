@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orion-ahop"
+version = "0.1.0"
+description = "Adaptive hybrid orbital propagation research framework"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "sgp4>=2.22"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.3"]
+
+[project.scripts]
+orion-ahop = "orion_ahop.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["orion_ahop*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
