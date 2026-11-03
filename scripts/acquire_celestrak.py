@@ -81,8 +81,8 @@ def main():
     p.add_argument("--output-dir", type=Path, default=Path("data/celestrak-acquisition"))
     a = p.parse_args()
     value = a.query_value.strip()
-    if not value or not 1 <= a.max_records <= 5000:
-        p.error("query value must be nonempty and max-records must be 1..5000")
+    if not value or not 1 <= a.max_records <= 20000:
+        p.error("query value must be nonempty and max-records must be 1..20000")
     if a.query_type == "CATNR" and not value.isdigit():
         p.error("CATNR must contain digits only")
 
