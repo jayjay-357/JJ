@@ -27,6 +27,8 @@ def test_teme_to_gcrs_transforms_position_and_velocity():
     assert result.epoch == EPOCH
     assert result.source_format == "OPM"
     assert result.metadata["frame_transform"] == "TEME_TO_GCRS"
+    assert "iers_ut1_status" in result.metadata
+    assert "iers_polar_motion_status" in result.metadata
     assert np.isfinite(result.position_km).all()
     assert np.isfinite(result.velocity_km_s).all()
     assert np.linalg.norm(result.position_km) == pytest.approx(6808.0, abs=2.0)
