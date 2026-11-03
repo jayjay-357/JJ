@@ -86,3 +86,16 @@ def test_drag_force_reduces_specific_orbital_energy():
     )
     assert result.success
     assert specific_energy(result.states_km_km_s[-1]) < specific_energy(initial)
+
+
+
+def test_cowell_rejects_naive_epoch():
+    naive_epoch = datetime(2026, 1, 1)
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        propagate_cowell(
+            (7000.0, 0.0, 0.0),
+            (0.0, 7.5, 0.0),
+            naive_epoch,
+            100.0,
+        )
