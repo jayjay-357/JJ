@@ -3,7 +3,9 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
-from orion_ahop.propagators.earth_orientation import EarthOrientationState\n\nfrom orion_ahop.propagators.force_models import (
+from orion_ahop.propagators.earth_orientation import EarthOrientationState
+
+from orion_ahop.propagators.force_models import (
     ExponentialAtmosphere,
     ForceModelConfig,
     ThirdBody,
