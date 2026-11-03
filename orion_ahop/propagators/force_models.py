@@ -1,6 +1,10 @@
 """Configurable perturbing accelerations for Cowell propagation.
 
-All states use an Earth-centred inertial frame and kilometres/seconds.
+Cartesian states use GCRS and kilometres/seconds. Supply an
+EarthOrientationProvider for GCRS J2/drag calculations when calling
+total_acceleration directly; Cowell injects the local IERS-backed provider
+automatically when those forces are active. Without a provider, the low-level
+J2 and drag functions retain their conventional +Z Earth-spin approximation.
 Atmospheric density is in kg/m^3; area-to-mass ratio is in m^2/kg.
 The exponential atmosphere and cylindrical eclipse are research approximations,
 not operational environment models.
@@ -82,6 +86,10 @@ class ForceModelConfig:
     def __post_init__(self) -> None:
         if self.earth_mu_km3_s2 <= 0 or self.earth_radius_km <= 0:
             raise ValueError("Earth gravitational parameter and radius must be positive.")
+        if self.earth_orientation_provider is not None and not callable(
+            self.earth_orientation_provider
+        ):
+            raise ValueError("earth_orientation_provider must be callable.")
         if self.atmosphere is not None:
             if self.drag_coefficient is None or self.drag_coefficient <= 0:
                 raise ValueError("A positive drag_coefficient is required when drag is enabled.")
