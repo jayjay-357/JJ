@@ -65,3 +65,24 @@ def test_legacy_two_body_wrapper_still_returns_epoch_state_pairs():
     assert result[0][0] == EPOCH
     assert result[-1][0] > EPOCH
     assert np.isfinite(result[-1][1]).all()
+
+
+
+def test_drag_force_reduces_specific_orbital_energy():
+    from orion_ahop.propagators.force_models import ExponentialAtmosphere
+
+    radius_km = 6378.1363 + 400.0
+    circular_speed = (MU_EARTH_KM3_S2 / radius_km) ** 0.5
+    initial = np.array([radius_km, 0.0, 0.0, 0.0, circular_speed, 0.0])
+    model = ForceModelConfig(
+        include_j2=False,
+        atmosphere=ExponentialAtmosphere(400.0, 4e-12, 60.0),
+        drag_coefficient=2.2,
+        area_to_mass_m2_kg=0.01,
+    )
+    result = propagate_cowell(
+        initial[:3], initial[3:], EPOCH, 600.0,
+        force_model=model, output_step_s=600.0, max_step_s=10.0,
+    )
+    assert result.success
+    assert specific_energy(result.states_km_km_s[-1]) < specific_energy(initial)
