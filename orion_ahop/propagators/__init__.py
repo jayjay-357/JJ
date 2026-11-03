@@ -30,5 +30,4 @@ __all__ = [
     "propagate_omm_to_cowell",
     "propagate_omm_to_gcrs",
     "teme_to_gcrs",
-    "ThirdBody",
 ]
