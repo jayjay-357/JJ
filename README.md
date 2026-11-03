@@ -64,3 +64,17 @@ if not result.success:
 ## Research integrity
 
 No accuracy or performance advantage is claimed until the engine is tested against an independent reference trajectory. Record data provenance, software versions, coordinate frames, time systems, force-model assumptions, physical parameters, solver tolerances, and evaluation settings in every experiment.
+
+
+## CelesTrak data acquisition
+
+A manual GitHub Actions workflow is available at **Actions → Acquire CelesTrak orbital sample → Run workflow**. It retrieves GP orbital elements and matching SATCAT metadata from the official CelesTrak endpoints, joins records by NORAD catalog ID, and uploads a CSV sample plus a JSON provenance report as a workflow artifact.
+
+Inputs:
+- `GROUP`: a documented CelesTrak group such as `STATIONS`, `FENGYUN-1C-DEB`, or `COSMOS-2251-DEB`.
+- `NAME`: a documented object-name substring, such as `R/B`.
+- `CATNR`: one NORAD catalog number.
+
+The output is a query-defined sample, not a complete catalog. The maximum-record setting truncates the GP response after download and therefore does not reduce the size of the provider response. The workflow caches responses and reuses them for up to two hours, sends a descriptive User-Agent, and stops on provider errors without automatic retry. Do not repeatedly rerun the workflow to poll for updates.
+
+SATCAT object type is recorded separately from operational status. GP mean elements are inputs for SGP4, not direct Cowell Cartesian initial states. This acquisition does not provide covariance; collision probability must remain unquantified unless valid covariance is obtained separately. Review `acquisition_report.json` before using the sample in an experiment.
