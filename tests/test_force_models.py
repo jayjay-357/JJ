@@ -168,3 +168,8 @@ def test_total_acceleration_uses_injected_gcrs_earth_orientation():
     )
     np.testing.assert_allclose(actual, expected, rtol=1e-13, atol=1e-16)
     assert calls == [EPOCH]
+
+
+def test_force_model_rejects_non_callable_earth_orientation_provider():
+    with pytest.raises(ValueError, match="must be callable"):
+        ForceModelConfig(earth_orientation_provider=object())
