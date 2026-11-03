@@ -1,0 +1,60 @@
+{
+  "reference_date_utc": "2026-11-03T00:00:00+00:00",
+  "input_files": {
+    "gp": "st_06jayjaycortes@gmail_com_20261103_719603371.csv",
+    "satcat": "satcat.csv"
+  },
+  "gp_records": 69790,
+  "gp_unique_norad_ids": 69790,
+  "satcat_records": 71228,
+  "satcat_unique_norad_ids": 71228,
+  "master_records": 69790,
+  "matched_satcat_records": 68635,
+  "unmatched_satcat_records": 1155,
+  "classified_object_counts": {
+    "DEBRIS": 34565,
+    "SATELLITE": 27295,
+    "ROCKET_BODY": 6617,
+    "UNKNOWN": 1313
+  },
+  "gp_source_object_type_counts": {
+    "DEBRIS": 34563,
+    "PAYLOAD": 26279,
+    "ROCKET BODY": 6607,
+    "UNKNOWN": 2141,
+    "TBA": 200
+  },
+  "satcat_object_type_counts": {
+    "DEB": 35943,
+    "PAY": 28200,
+    "R/B": 6920,
+    "UNK": 165
+  },
+  "epoch_status_counts": {
+    "STALE_OVER_30D": 36857,
+    "RECENT_WITHIN_30D": 32913,
+    "FUTURE_EPOCH_CHECK": 20
+  },
+  "orbit_region_counts": {
+    "LEO_CONFINED_APOAPSIS_LE_2000KM": 62712,
+    "LEO_CROSSING_PERIAPSIS_LE_2000KM": 3693,
+    "NON_LEO_OR_UNCLASSIFIED": 3385
+  },
+  "leo_recent_nondecayed_candidate_count": 28310,
+  "leo_crossing_recent_nondecayed_candidate_count": 1703,
+  "important_caveats": [
+    "The master catalog is a merged snapshot, not a validated conjunction-assessment catalog.",
+    "The 30-day epoch threshold is a preliminary data-freshness filter, not proof of orbit accuracy.",
+    "Future-dated epochs were flagged for review and should not be used until verified.",
+    "LEO_CONFINED uses catalog apogee altitude <= 2000 km; LEO_CROSSING uses perigee altitude <= 2000 km with apogee above 2000 km.",
+    "GP mean elements are intended for SGP4; do not treat them directly as precise osculating elements for Cowell propagation.",
+    "Object type classifications are preserved from GP and SATCAT; operational status requires separate interpretation."
+  ],
+  "recognized_gp_satcat_type_mismatches": 36,
+  "preliminary_leo_candidate_class_counts": {
+    "SATELLITE": 17643,
+    "DEBRIS": 9113,
+    "ROCKET_BODY": 993,
+    "UNKNOWN": 561
+  }
+}
