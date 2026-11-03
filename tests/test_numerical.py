@@ -99,3 +99,29 @@ def test_cowell_rejects_naive_epoch():
             naive_epoch,
             100.0,
         )
+
+
+def test_cowell_uses_local_earth_orientation_for_default_j2_model():
+    result = propagate_cowell(
+        (7000.0, 0.0, 0.0),
+        (0.0, 7.5, 0.0),
+        EPOCH,
+        10.0,
+        output_step_s=10.0,
+        max_step_s=5.0,
+        frame="GCRS",
+    )
+    assert result.success
+    assert result.frame == "GCRS"
+    assert result.function_evaluations > 0
+
+
+def test_cowell_rejects_non_gcrs_input_frame():
+    with pytest.raises(ValueError, match='frame="GCRS"'):
+        propagate_cowell(
+            (7000.0, 0.0, 0.0),
+            (0.0, 7.5, 0.0),
+            EPOCH,
+            10.0,
+            frame="TEME",
+        )
