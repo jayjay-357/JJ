@@ -1,13 +1,14 @@
 """Cowell Cartesian orbit propagation using adaptive DOP853 integration."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.integrate import solve_ivp
 
+from orion_ahop.propagators.earth_orientation import EarthOrientationProvider
 from orion_ahop.propagators.force_models import (
     ForceModelConfig,
     MU_EARTH_KM3_S2,
@@ -27,6 +28,7 @@ class PropagationResult:
     message: str
     function_evaluations: int
     method: str = "DOP853"
+    frame: str = "GCRS"
 
 
 def _initial_state(position_km, velocity_km_s) -> StateArray:
@@ -65,8 +67,14 @@ def propagate_cowell(
     relative_tolerance: float = 1e-10,
     position_absolute_tolerance_km: float = 1e-9,
     velocity_absolute_tolerance_km_s: float = 1e-12,
+    frame: str = "GCRS",
 ) -> PropagationResult:
-    """Propagate an Earth-centred Cartesian state with Cowell's equations.
+    """Propagate a GCRS Earth-centred Cartesian state with Cowell's equations.
+
+    TEME states from SGP4 must be transformed to GCRS before calling this
+    function. When J2 or drag is enabled and no provider is supplied, a local
+    IERS-backed EarthOrientationProvider is created. Its spin vector is a
+    documented first-order rigid-Earth approximation.
 
     DOP853 controls local integration error. It does not control force-model
     error, initial-state error, or uncertainty in physical parameters.
@@ -76,6 +84,8 @@ def propagate_cowell(
         raise TypeError("epoch must be a datetime.")
     if epoch.tzinfo is None or epoch.utcoffset() is None:
         raise ValueError("epoch must be timezone-aware.")
+    if not isinstance(frame, str) or frame.strip().upper() != "GCRS":
+        raise ValueError('propagate_cowell currently requires frame="GCRS".')
     if not np.isfinite(duration_s) or duration_s < 0:
         raise ValueError("duration_s must be finite and non-negative.")
     if not np.isfinite(output_step_s) or output_step_s <= 0:
@@ -91,6 +101,14 @@ def propagate_cowell(
         raise ValueError("All integration tolerances must be finite and positive.")
 
     config = force_model or ForceModelConfig()
+    if (
+        config.earth_orientation_provider is None
+        and (config.include_j2 or config.atmosphere is not None)
+    ):
+        config = replace(
+            config,
+            earth_orientation_provider=EarthOrientationProvider(),
+        )
     times = _output_times(float(duration_s), float(output_step_s))
     if duration_s == 0:
         return PropagationResult(
@@ -99,6 +117,7 @@ def propagate_cowell(
             success=True,
             message="Zero-duration propagation; initial state returned.",
             function_evaluations=0,
+            frame="GCRS",
         )
 
     atol = np.array(
@@ -131,6 +150,7 @@ def propagate_cowell(
         success=bool(solution.success),
         message=str(solution.message),
         function_evaluations=int(solution.nfev),
+        frame="GCRS",
     )
 
 
