@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, Sequence
 
+from orion_ahop.propagators.earth_orientation import EarthOrientationState
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -75,6 +77,7 @@ class ForceModelConfig:
     earth_radius_km: float = EARTH_RADIUS_KM
     earth_j2: float = EARTH_J2
     earth_rotation_rad_s: float = EARTH_ROTATION_RAD_S
+    earth_orientation_provider: Callable[[datetime], EarthOrientationState] | None = None
 
     def __post_init__(self) -> None:
         if self.earth_mu_km3_s2 <= 0 or self.earth_radius_km <= 0:
@@ -236,15 +239,30 @@ def total_acceleration(
     v = _vector3(velocity_km_s, "velocity_km_s")
     acceleration = central_gravity(r, config.earth_mu_km3_s2)
 
+    orientation = None
+    if config.earth_orientation_provider is not None and (
+        config.include_j2 or config.atmosphere is not None
+    ):
+        orientation = config.earth_orientation_provider(epoch)
+
     if config.include_j2:
+        pole = (
+            orientation.pole_unit_vector_gcrs
+            if orientation is not None else (0.0, 0.0, 1.0)
+        )
         acceleration += j2_acceleration(
-            r, config.earth_mu_km3_s2, config.earth_radius_km, config.earth_j2
+            r, config.earth_mu_km3_s2, config.earth_radius_km,
+            config.earth_j2, pole_unit_vector=pole,
         )
     if config.atmosphere is not None:
         acceleration += atmospheric_drag_acceleration(
             epoch, r, v, config.atmosphere, float(config.drag_coefficient),
             float(config.area_to_mass_m2_kg), config.earth_radius_km,
             config.earth_rotation_rad_s,
+            earth_angular_velocity_vector_rad_s=(
+                orientation.angular_velocity_vector_gcrs_rad_s
+                if orientation is not None else None
+            ),
         )
     if config.include_solar_radiation_pressure:
         sun_position = _vector3(config.sun_position_provider(epoch), "sun_position_km")
