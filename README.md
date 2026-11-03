@@ -7,7 +7,9 @@
 - Limited CCSDS KVN ingestion scaffold for OMM, OPM, and OEM.
 - Canonical orbital-state and metadata models.
 - Input validation and compatibility checks.
-- Adaptive DOP853 integration of Cowell's equations for Cartesian initial states.
+- Adaptive DOP853 integration of Cowell's equations for GCRS Cartesian initial states.
+- Astropy TEME-to-GCRS position/velocity transformation for SGP4 states (covariance transformation is not yet implemented).
+- IERS-corrected celestial-intermediate-pole direction and a documented first-order rigid-Earth spin vector for GCRS J2 and atmospheric-drag calculations.
 - Central Earth gravity and configurable J2 perturbation.
 - Optional atmospheric drag using a configurable exponential-density approximation.
 - Optional solar radiation pressure using a caller-supplied Sun ephemeris and cylindrical-umbra approximation.
@@ -19,7 +21,7 @@
 
 This is a research prototype, not an operational collision-avoidance service. The KVN parser supports a deliberately limited subset of CCSDS messages; it is not a complete CCSDS implementation. XML is not implemented. OEM is retained as supplied ephemeris/reference data and is not yet interpolated into Cowell initial conditions.
 
-The Cowell engine currently accepts Cartesian initial states in an Earth-centred inertial frame. Frame transformations, time-scale conversions, validated operational atmospheric-density models, high-degree Earth gravity, object attitude modelling, covariance propagation, conjunction assessment, and the ORION-QARC quantum circuit remain future implementation tasks. The existing OMM/SGP4 compatibility adapter is retained as a data-initialization component pending a validated TEME-to-inertial state-conversion workflow; it is not the selected long-term propagation engine.
+The Cowell engine accepts GCRS Cartesian initial states. SGP4 outputs TEME states, which must be converted with `teme_to_gcrs` before Cowell propagation. The transformation rejects covariance inputs until a full 6x6 covariance Jacobian is implemented. Cowell automatically uses local IERS data for the Earth pole when J2 or drag is enabled; it disables automatic network refresh and rejects epochs outside the available celestial-pole-correction range. The spin vector is a first-order approximation using nominal Earth rotation directed along the corrected celestial intermediate pole. It does not include length-of-day corrections, polar-motion rates, or sub-daily variations. Validated operational atmospheric-density models, high-degree Earth gravity, object attitude modelling, covariance propagation, conjunction assessment, and the ORION-QARC quantum circuit remain future implementation tasks.
 
 The exponential atmosphere and cylindrical SRP shadow are simplified research approximations. Enabling drag, SRP, or third-body forces requires documented physical parameters and consistent ephemerides. DOP853 controls numerical integration error; it does not remove errors in the force model or initial orbit.
 
@@ -52,6 +54,7 @@ result = propagate_cowell(
     epoch=datetime(2026, 1, 1, tzinfo=timezone.utc),
     duration_s=86400.0,
     force_model=ForceModelConfig(include_j2=True),
+    frame="GCRS",
 )
 
 if not result.success:
