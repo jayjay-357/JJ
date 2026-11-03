@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
-from orion_ahop.propagators.force_models import (
+from orion_ahop.propagators.earth_orientation import EarthOrientationState\n\nfrom orion_ahop.propagators.force_models import (
     ExponentialAtmosphere,
     ForceModelConfig,
     ThirdBody,
@@ -134,3 +134,35 @@ def test_drag_acceleration_is_rotation_covariant_with_rotated_earth_spin():
         earth_angular_velocity_vector_rad_s=rotation @ omega,
     )
     np.testing.assert_allclose(rotated, rotation @ original, rtol=1e-12, atol=1e-15)
+
+
+def test_total_acceleration_uses_injected_gcrs_earth_orientation():
+    pole = (0.01, -0.02, 0.99975)
+    omega = (1.0e-6, -2.0e-6, 7.289e-5)
+    calls = []
+
+    def provider(epoch):
+        calls.append(epoch)
+        return EarthOrientationState(EPOCH, pole, omega, 0)
+
+    atmosphere = ExponentialAtmosphere(400.0, 4e-12, 60.0)
+    config = ForceModelConfig(
+        include_j2=True,
+        atmosphere=atmosphere,
+        drag_coefficient=2.2,
+        area_to_mass_m2_kg=0.01,
+        earth_orientation_provider=provider,
+    )
+    position = np.array([6778.1363, 200.0, -100.0])
+    velocity = np.array([-0.2, 7.6, 0.4])
+    actual = total_acceleration(EPOCH, position, velocity, config)
+    expected = (
+        central_gravity(position)
+        + j2_acceleration(position, pole_unit_vector=pole)
+        + atmospheric_drag_acceleration(
+            EPOCH, position, velocity, atmosphere, 2.2, 0.01,
+            earth_angular_velocity_vector_rad_s=omega,
+        )
+    )
+    np.testing.assert_allclose(actual, expected, rtol=1e-13, atol=1e-16)
+    assert calls == [EPOCH]
