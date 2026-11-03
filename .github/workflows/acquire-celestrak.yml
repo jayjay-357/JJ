@@ -46,11 +46,15 @@ jobs:
           restore-keys: |
             celestrak-${{ inputs.query_type }}-${{ hashFiles('pyproject.toml') }}-
       - name: Acquire and validate
+        env:
+          QUERY_TYPE: ${{ inputs.query_type }}
+          QUERY_VALUE: ${{ inputs.query_value }}
+          MAX_RECORDS: ${{ inputs.max_records }}
         run: >-
           python scripts/acquire_celestrak.py
-          --query-type "${{ inputs.query_type }}"
-          --query-value "${{ inputs.query_value }}"
-          --max-records "${{ inputs.max_records }}"
+          --query-type "$QUERY_TYPE"
+          --query-value "$QUERY_VALUE"
+          --max-records "$MAX_RECORDS"
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
