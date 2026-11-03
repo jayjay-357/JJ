@@ -17,10 +17,10 @@ on:
         type: string
         default: STATIONS
       max_records:
-        description: Maximum records retained (1-5000)
+        description: Maximum records retained (1-20000)
         required: true
         type: string
-        default: "300"
+        default: "20000"
 
 permissions:
   contents: read
