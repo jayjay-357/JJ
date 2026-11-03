@@ -81,3 +81,56 @@ def test_total_acceleration_includes_third_body_provider():
         ForceModelConfig(include_j2=False, third_bodies=(body,)),
     )
     assert np.isfinite(acceleration).all()
+
+
+
+def test_j2_acceleration_is_rotation_covariant_with_rotated_pole():
+    position = np.array([6800.0, 1200.0, -900.0])
+    angle = 0.73
+    rotation = np.array([
+        [np.cos(angle), 0.0, np.sin(angle)],
+        [0.0, 1.0, 0.0],
+        [-np.sin(angle), 0.0, np.cos(angle)],
+    ])
+    original = j2_acceleration(position)
+    rotated = j2_acceleration(
+        rotation @ position,
+        pole_unit_vector=rotation @ np.array([0.0, 0.0, 1.0]),
+    )
+    np.testing.assert_allclose(rotated, rotation @ original, rtol=1e-12, atol=1e-15)
+
+
+def test_j2_rejects_zero_pole_vector():
+    with pytest.raises(ValueError, match="non-zero"):
+        j2_acceleration(np.array([7000.0, 0.0, 0.0]), pole_unit_vector=(0, 0, 0))
+
+
+def test_j2_rejects_nonfinite_pole_vector():
+    with pytest.raises(ValueError, match="finite"):
+        j2_acceleration(
+            np.array([7000.0, 0.0, 0.0]),
+            pole_unit_vector=(0.0, np.nan, 1.0),
+        )
+
+
+def test_drag_acceleration_is_rotation_covariant_with_rotated_earth_spin():
+    atmosphere = ExponentialAtmosphere(400.0, 4e-12, 60.0)
+    position = np.array([6778.1363, 200.0, -100.0])
+    velocity = np.array([-0.2, 7.6, 0.4])
+    omega = np.array([1.0e-6, -2.0e-6, 7.29e-5])
+    angle = 0.61
+    rotation = np.array([
+        [np.cos(angle), 0.0, np.sin(angle)],
+        [0.0, 1.0, 0.0],
+        [-np.sin(angle), 0.0, np.cos(angle)],
+    ])
+    original = atmospheric_drag_acceleration(
+        EPOCH, position, velocity, atmosphere, 2.2, 0.01,
+        earth_angular_velocity_vector_rad_s=omega,
+    )
+    rotated = atmospheric_drag_acceleration(
+        EPOCH, rotation @ position, rotation @ velocity,
+        atmosphere, 2.2, 0.01,
+        earth_angular_velocity_vector_rad_s=rotation @ omega,
+    )
+    np.testing.assert_allclose(rotated, rotation @ original, rtol=1e-12, atol=1e-15)
