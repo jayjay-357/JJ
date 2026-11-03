@@ -47,8 +47,23 @@ def teme_to_gcrs(state: OrbitalState) -> OrbitalState:
     )
     teme_state = TEME(representation, obstime=obstime)
 
-    # Prevent a coordinate transform from silently downloading EOP data.
+    # Prevent a coordinate transform from silently downloading EOP data and
+    # reject epochs outside the locally available UT1/polar-motion coverage.
     with iers.conf.set_temp("auto_download", False):
+        eop_table = iers.earth_orientation_table.get()
+        _ut1, ut1_status = eop_table.ut1_utc(obstime, return_status=True)
+        _pm_x, _pm_y, pm_status = eop_table.pm_xy(obstime, return_status=True)
+        invalid_statuses = (
+            iers.TIME_BEFORE_IERS_RANGE,
+            iers.TIME_BEYOND_IERS_RANGE,
+        )
+        ut1_status_value = int(np.asarray(ut1_status).item())
+        pm_status_value = int(np.asarray(pm_status).item())
+        if ut1_status_value in invalid_statuses or pm_status_value in invalid_statuses:
+            raise ValueError(
+                "Epoch is outside locally available IERS UT1/polar-motion coverage; "
+                "provide a suitable local IERS table."
+            )
         gcrs_state = teme_state.transform_to(GCRS(obstime=obstime))
 
     transformed_position = gcrs_state.cartesian.xyz.to_value(u.km)
@@ -59,6 +74,8 @@ def teme_to_gcrs(state: OrbitalState) -> OrbitalState:
     metadata["frame_transform"] = "TEME_TO_GCRS"
     metadata["frame_transform_epoch_utc"] = epoch_utc.isoformat()
     metadata["frame_transform_model"] = "Astropy TEME/GCRS transformation"
+    metadata["iers_ut1_status"] = ut1_status_value
+    metadata["iers_polar_motion_status"] = pm_status_value
 
     return OrbitalState(
         epoch=epoch_utc,
