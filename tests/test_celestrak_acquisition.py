@@ -10,7 +10,7 @@ SPEC.loader.exec_module(acquisition)
 
 
 def test_rows_from_parses_csv_and_strips_values():
-    csv_text = "\\n".join(["NORAD_CAT_ID, OBJECT_NAME", "25544, ISS ", ""])
+    csv_text = chr(10).join(["NORAD_CAT_ID, OBJECT_NAME", "25544, ISS ", ""])
     rows = acquisition.rows_from(csv_text, "fixture")
     assert rows == [{"NORAD_CAT_ID": "25544", "OBJECT_NAME": "ISS"}]
 
@@ -22,7 +22,7 @@ def test_val_returns_first_available_field():
 def test_cached_csv_uses_fresh_cache(tmp_path, monkeypatch):
     path = tmp_path / "cached.json"
     stamp = datetime.now(timezone.utc).isoformat()
-    csv_text = "\\n".join(["a,b", "1,2", ""])
+    csv_text = chr(10).join(["a,b", "1,2", ""])
     path.write_text(json.dumps({"fetched_at": stamp, "csv": csv_text}), encoding="utf-8")
 
     def unexpected_request(_url):
@@ -39,7 +39,7 @@ def test_cached_csv_refetches_expired_cache(tmp_path, monkeypatch):
     path = tmp_path / "cached.json"
     old_stamp = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
     path.write_text(json.dumps({"fetched_at": old_stamp, "csv": "old"}), encoding="utf-8")
-    fresh_csv = "\\n".join(["new,data", "1,2", ""])
+    fresh_csv = chr(10).join(["new,data", "1,2", ""])
     monkeypatch.setattr(acquisition, "request_csv", lambda _url: fresh_csv)
     text, _stamp, cache_hit = acquisition.cached_csv("https://example.invalid", path)
     assert text == fresh_csv
