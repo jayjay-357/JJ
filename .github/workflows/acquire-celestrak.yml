@@ -47,9 +47,9 @@ jobs:
             celestrak-${{ inputs.query_type }}-${{ hashFiles('pyproject.toml') }}-
       - name: Acquire and validate
         env:
-          QUERY_TYPE: ${{ inputs.query_type }}
-          QUERY_VALUE: ${{ inputs.query_value }}
-          MAX_RECORDS: ${{ inputs.max_records }}
+          QUERY_TYPE: ${{ GROUP }}
+          QUERY_VALUE: ${{ STATIONS }}
+          MAX_RECORDS: ${{ 300 }}
         run: >-
           python scripts/acquire_celestrak.py
           --query-type "$QUERY_TYPE"
