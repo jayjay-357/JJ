@@ -43,7 +43,6 @@ class ExponentialAtmosphere:
 
     def density(self, altitude_km: float) -> float:
         exponent = -(altitude_km - self.reference_altitude_km) / self.scale_height_km
-        # Prevent floating-point overflow for unrealistic test altitudes.
         return float(self.reference_density_kg_m3 * np.exp(np.clip(exponent, -100.0, 100.0)))
 
 
@@ -113,20 +112,30 @@ def j2_acceleration(
     mu_km3_s2: float = MU_EARTH_KM3_S2,
     radius_km: float = EARTH_RADIUS_KM,
     j2: float = EARTH_J2,
+    pole_unit_vector: Sequence[float] = (0.0, 0.0, 1.0),
 ) -> Vector3:
-    """Earth's first zonal-harmonic perturbation in an Earth-equatorial inertial frame."""
-    x, y, z = position_km
-    r2 = float(np.dot(position_km, position_km))
-    r = float(np.sqrt(r2))
+    """Earth J2 perturbation for a pole direction expressed in the state frame.
+
+    The default +Z pole preserves the conventional Earth-equatorial inertial
+    formulation. Supply the Earth pole in the spacecraft state frame when the
+    state is expressed in another inertial frame, such as GCRS.
+    """
+    position = _vector3(position_km, "position_km")
+    pole = _vector3(pole_unit_vector, "pole_unit_vector")
+    pole_norm = float(np.linalg.norm(pole))
+    if pole_norm <= 0:
+        raise ValueError("pole_unit_vector must have non-zero magnitude.")
+    pole = pole / pole_norm
+
+    r_squared = float(np.dot(position, position))
+    r = float(np.sqrt(r_squared))
     if r <= 0:
         raise ValueError("Position magnitude must be positive.")
+    projection = float(np.dot(position, pole))
     factor = 1.5 * j2 * mu_km3_s2 * radius_km**2 / r**5
-    z_ratio = z * z / r2
-    return factor * np.array(
-        [x * (5.0 * z_ratio - 1.0),
-         y * (5.0 * z_ratio - 1.0),
-         z * (5.0 * z_ratio - 3.0)],
-        dtype=float,
+    return factor * (
+        (5.0 * projection**2 / r_squared - 1.0) * position
+        - 2.0 * projection * pole
     )
 
 
@@ -139,17 +148,28 @@ def atmospheric_drag_acceleration(
     area_to_mass_m2_kg: float,
     earth_radius_km: float = EARTH_RADIUS_KM,
     earth_rotation_rad_s: float = EARTH_ROTATION_RAD_S,
+    earth_angular_velocity_vector_rad_s: Sequence[float] | None = None,
 ) -> Vector3:
     """Drag with a co-rotating atmosphere; returns km/s^2.
 
-    This simple model neglects winds, local-time/solar-activity variations,
-    and detailed Earth-orientation effects.
+    If supplied, earth_angular_velocity_vector_rad_s must be expressed in the
+    same inertial frame as position and velocity. The scalar rotation argument
+    remains as a legacy +Z-axis approximation.
     """
-    del epoch  # Reserved for future time-dependent atmospheric models.
-    altitude_km = float(np.linalg.norm(position_km)) - earth_radius_km
+    del epoch
+    position = _vector3(position_km, "position_km")
+    velocity = _vector3(velocity_km_s, "velocity_km_s")
+    if earth_angular_velocity_vector_rad_s is None:
+        angular_velocity = np.array([0.0, 0.0, earth_rotation_rad_s], dtype=float)
+    else:
+        angular_velocity = _vector3(
+            earth_angular_velocity_vector_rad_s,
+            "earth_angular_velocity_vector_rad_s",
+        )
+    altitude_km = float(np.linalg.norm(position)) - earth_radius_km
     rho = atmosphere.density(altitude_km)
-    omega_cross_r = np.cross(np.array([0.0, 0.0, earth_rotation_rad_s]), position_km)
-    relative_velocity_m_s = (velocity_km_s - omega_cross_r) * 1000.0
+    omega_cross_r = np.cross(angular_velocity, position)
+    relative_velocity_m_s = (velocity - omega_cross_r) * 1000.0
     speed_m_s = float(np.linalg.norm(relative_velocity_m_s))
     acceleration_m_s2 = (
         -0.5 * rho * drag_coefficient * area_to_mass_m2_kg
@@ -182,11 +202,7 @@ def solar_radiation_pressure_acceleration(
     reflectivity_coefficient: float = 1.3,
     earth_radius_km: float = EARTH_RADIUS_KM,
 ) -> Vector3:
-    """SRP acceleration with a simple cylindrical Earth-umbra shadow.
-
-    The Sun position is geocentric and expressed in the same inertial frame.
-    Penumbra modelling and attitude-dependent projected area are not included.
-    """
+    """SRP acceleration with a simple cylindrical Earth-umbra shadow."""
     sun_distance = float(np.linalg.norm(sun_position_km))
     if sun_distance <= 0:
         raise ValueError("Sun position magnitude must be positive.")
