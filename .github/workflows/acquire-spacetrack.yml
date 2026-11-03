@@ -1,0 +1,53 @@
+name: Acquire Space-Track object catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_records:
+        description: Maximum unique NORAD records retained after download
+        required: true
+        type: number
+        default: 50000
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spacetrack-catalog-acquisition
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/orion-ahop-earth-orientation
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore Space-Track response cache
+        uses: actions/cache@v4
+        with:
+          path: data/spacetrack-cache
+          key: spacetrack-gp-cache-v1-${{ github.run_id }}
+          restore-keys: |
+            spacetrack-gp-cache-v1-
+      - name: Acquire catalog and generate provenance report
+        env:
+          SPACETRACK_IDENTITY: ${{ secrets.SPACETRACK_IDENTITY }}
+          SPACETRACK_PASSWORD: ${{ secrets.SPACETRACK_PASSWORD }}
+          MAX_RECORDS: ${{ inputs.max_records }}
+        run: |
+          python scripts/acquire_spacetrack_catalog.py --max-records "$MAX_RECORDS"
+      - name: Upload catalog, raw response, and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-spacetrack-catalog-${{ github.run_id }}
+          path: |
+            data/spacetrack-acquisition/spacetrack_object_catalog.csv
+            data/spacetrack-acquisition/spacetrack_gp_raw.json
+            data/spacetrack-acquisition/spacetrack_acquisition_report.json
+          if-no-files-found: error
+          retention-days: 14
