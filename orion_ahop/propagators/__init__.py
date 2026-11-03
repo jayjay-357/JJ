@@ -14,6 +14,10 @@ from orion_ahop.propagators.numerical_engine import (
     PropagationResult,
     propagate_cowell,
 )
+from orion_ahop.propagators.orbit_pipeline import (
+    propagate_omm_to_cowell,
+    propagate_omm_to_gcrs,
+)
 
 __all__ = [
     "EarthOrientationProvider",
@@ -23,5 +27,8 @@ __all__ = [
     "PropagationResult",
     "ThirdBody",
     "propagate_cowell",
+    "propagate_omm_to_cowell",
+    "propagate_omm_to_gcrs",
     "teme_to_gcrs",
+    "ThirdBody",
 ]
