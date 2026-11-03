@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .collision_risk import PairRiskResult, SpaceObject, assess_pair_risk, pair_type_for
+from .collision_risk import ObjectType, PairRiskResult, SpaceObject, assess_pair_risk, pair_type_for
 from .conjunction import Conjunction, screen_all_pairs
 
 
@@ -43,8 +43,14 @@ def assess_supported_pairs(
         except ValueError:
             continue
 
-        a = trajectories[conjunction.object_1]
-        b = trajectories[conjunction.object_2]
+        # Normalize mixed-pair reporting as DEBRIS -> protected object.
+        if object_1.object_type != ObjectType.DEBRIS and object_2.object_type == ObjectType.DEBRIS:
+            object_1, object_2 = object_2, object_1
+            a = trajectories[conjunction.object_2]
+            b = trajectories[conjunction.object_1]
+        else:
+            a = trajectories[conjunction.object_1]
+            b = trajectories[conjunction.object_2]
         index = conjunction.sample_index
         dt = conjunction.tca_offset_s - float(times[index])
         relative_position = (
