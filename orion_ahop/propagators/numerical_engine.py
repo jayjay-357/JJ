@@ -74,6 +74,8 @@ def propagate_cowell(
     initial = _initial_state(position_km, velocity_km_s)
     if not isinstance(epoch, datetime):
         raise TypeError("epoch must be a datetime.")
+    if epoch.tzinfo is None or epoch.utcoffset() is None:
+        raise ValueError("epoch must be timezone-aware.")
     if not np.isfinite(duration_s) or duration_s < 0:
         raise ValueError("duration_s must be finite and non-negative.")
     if not np.isfinite(output_step_s) or output_step_s <= 0:
