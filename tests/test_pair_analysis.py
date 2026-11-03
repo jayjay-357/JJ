@@ -26,3 +26,9 @@ def test_supported_pair_analysis_includes_debris_satellite_and_rocket_pairs():
     assert pair_types == {"debris-debris", "satellite-debris", "rocket-debris"}
     # One debris-debris pair, two satellite-debris pairs, and two rocket-debris pairs.
     assert len(results) == 5
+
+    # Mixed pairs are reported from the debris threat toward the protected object.
+    for result in results:
+        if result.risk.pair_type.value != "debris-debris":
+            assert objects[result.risk.object_1].object_type is ObjectType.DEBRIS
+            assert objects[result.risk.object_2].object_type is not ObjectType.DEBRIS
