@@ -93,8 +93,25 @@ def main():
     gp_text, gp_stamp, gp_hit = cached_csv(gp_url, a.cache_dir / f"{key}-gp.json")
     sat_text, sat_stamp, sat_hit = cached_csv(sat_url, a.cache_dir / f"{key}-satcat.json")
     gp_rows = rows_from(gp_text, "GP")
-    sat_rows = rows_from(sat_text, "SATCAT") 
-    gp_rows = gp_rows[:a.max_records]
+    sat_rows = rows_from(sat_text, "SATCAT")
+    gp_rows_returned = len(gp_rows)
+
+    # Count each NORAD catalog ID once, preserving the provider's first occurrence.
+    unique_gp_rows = []
+    seen_ids = set()
+    duplicate_norad_ids = 0
+    missing_norad_ids = 0
+    for row in gp_rows:
+        ident = val(row, "NORAD_CAT_ID", "NORAD_CATID")
+        if not ident:
+            missing_norad_ids += 1
+            continue
+        if ident in seen_ids:
+            duplicate_norad_ids += 1
+            continue
+        seen_ids.add(ident)
+        unique_gp_rows.append(row)
+    gp_rows = unique_gp_rows[:a.max_records]
     sat_by_id = {val(r, "NORAD_CAT_ID", "NORAD_CATID"): r for r in sat_rows if val(r, "NORAD_CAT_ID", "NORAD_CATID")}
 
     output = []
@@ -147,8 +164,11 @@ def main():
         "satcat_retrieved_at_utc": sat_stamp,
         "gp_cache_used": gp_hit,
         "satcat_cache_used": sat_hit,
-        "gp_rows_returned": len(rows_from(gp_text, "GP")),
+        "gp_rows_returned": gp_rows_returned,
         "gp_rows_retained": len(gp_rows),
+        "unique_norad_ids_retained": len({row["NORAD_CAT_ID"] for row in output}),
+        "duplicate_norad_ids_excluded": duplicate_norad_ids,
+        "gp_rows_without_norad_id_excluded": missing_norad_ids,
         "satcat_rows_returned": len(sat_rows),
         "joined_rows": len(output),
         "missing_satcat_match": missing,
