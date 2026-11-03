@@ -78,3 +78,12 @@ Inputs:
 The output is a query-defined sample, not a complete catalog. The maximum-record setting truncates the GP response after download and therefore does not reduce the size of the provider response. The workflow caches responses and reuses them for up to two hours, sends a descriptive User-Agent, and stops on provider errors without automatic retry. Do not repeatedly rerun the workflow to poll for updates.
 
 SATCAT object type is recorded separately from operational status. GP mean elements are inputs for SGP4, not direct Cowell Cartesian initial states. This acquisition does not provide covariance; collision probability must remain unquantified unless valid covariance is obtained separately. Review `acquisition_report.json` before using the sample in an experiment.
+
+
+## Space-Track catalog acquisition
+
+A manual GitHub Actions workflow is available at **Actions → Acquire Space-Track object catalog → Run workflow**. It retrieves recent on-orbit GP records from Space-Track, deduplicates NORAD catalog IDs, retains object classifications when supplied, and uploads the raw JSON, normalized catalog CSV, and provenance report as an artifact.
+
+Before running it, add the repository Actions secrets `SPACETRACK_IDENTITY` and `SPACETRACK_PASSWORD`. The workflow checks out `work/orion-ahop-earth-orientation`. Its response cache is retained for one hour to respect Space-Track's GP retrieval frequency.
+
+**Scientific boundary:** Space-Track GP/OMM records are mean-element products, not Cartesian initial states. This workflow uses them only for object identification, classification, and cross-source matching. It does not invoke SGP4 or convert GP elements into Cartesian states. Objects without independently validated Cartesian initial states must not be counted as propagation-ready. See [docs/SPACETRACK_CATALOG.md](docs/SPACETRACK_CATALOG.md).
