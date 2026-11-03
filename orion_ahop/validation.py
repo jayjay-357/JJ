@@ -14,10 +14,14 @@ _REQUIRED = {
 def validate_message(message: CCSDSMessage) -> list[str]:
     if message.message_type not in _REQUIRED:
         return [f"Unsupported message type: {message.message_type}"]
+    # CCSDS metadata fields and message data fields are split by META_START/STOP.
+    # Validate against both locations because fields such as REF_FRAME and OEM
+    # START_TIME/STOP_TIME belong to the metadata section.
+    combined = {**message.metadata, **message.data}
     errors = [f"Missing required {message.message_type} field: {key}"
-              for key in _REQUIRED[message.message_type] if key not in message.data]
+              for key in _REQUIRED[message.message_type] if key not in combined]
     if message.message_type == "OMM":
-        theory = message.data.get("MEAN_ELEMENT_THEORY", "SGP4").upper()
+        theory = combined.get("MEAN_ELEMENT_THEORY", "SGP4").upper()
         if theory not in {"SGP4", "GP"}:
             errors.append(f"OMM mean-element theory {theory!r} is not supported by SGP4.")
     return errors
