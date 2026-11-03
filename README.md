@@ -1,23 +1,30 @@
 # ORION-AHOP
 
-**ORION-AHOP (Adaptive Hybrid Orbital Propagation)** is an experimental research framework for selecting compatible orbital-propagation pathways and allocating computational effort through an adaptive controller.
+**ORION-AHOP** is the orbital-propagation foundation of ORION-X. The selected primary propagation formulation is Cowell's Cartesian numerical method, integrated with an adaptive DOP853 solver and configurable perturbing-force models.
 
-## Current scope
+## Current implementation
+
 - Limited CCSDS KVN ingestion scaffold for OMM, OPM, and OEM.
 - Canonical orbital-state and metadata models.
 - Input validation and compatibility checks.
-- Combined adaptive score using uncertainty, data age, and conjunction relevance.
-- SGP4 adapter for supported GP/SGP4 mean-element OMM records.
-- Educational two-body RK4 propagation baseline for Cartesian states.
-- DSST adapter interface (not implemented yet).
-- Classical Monte Carlo reference for collision-event experiments.
+- Adaptive DOP853 integration of Cowell's equations for Cartesian initial states.
+- Central Earth gravity and configurable J2 perturbation.
+- Optional atmospheric drag using a configurable exponential-density approximation.
+- Optional solar radiation pressure using a caller-supplied Sun ephemeris and cylindrical-umbra approximation.
+- Optional differential third-body gravity using caller-supplied ephemerides.
+- Numerical tests for force contributions, solver output, and two-body energy conservation.
+- Classical Monte Carlo reference interface for later collision-event experiments.
 
-## Important limitations
-This is a research prototype, not an operational collision-avoidance service. The KVN parser supports a deliberately limited subset of CCSDS messages; it is not a complete CCSDS implementation. XML is not implemented. OEM is retained as supplied ephemeris/reference data and is not automatically treated as a new initial state. The numerical integrator currently uses a two-body gravity model and is not high fidelity. DSST and the quantum ORION-QARC estimator are design interfaces only; no DSST solver or quantum circuit is included yet.
+## Important implementation boundaries
 
-The adaptive score allocates computational effort. It does **not** directly represent collision probability and cannot override physical compatibility requirements.
+This is a research prototype, not an operational collision-avoidance service. The KVN parser supports a deliberately limited subset of CCSDS messages; it is not a complete CCSDS implementation. XML is not implemented. OEM is retained as supplied ephemeris/reference data and is not yet interpolated into Cowell initial conditions.
+
+The Cowell engine currently accepts Cartesian initial states in an Earth-centred inertial frame. Frame transformations, time-scale conversions, validated operational atmospheric-density models, high-degree Earth gravity, object attitude modelling, covariance propagation, conjunction assessment, and the ORION-QARC quantum circuit remain future implementation tasks. The existing OMM/SGP4 compatibility adapter is retained as a data-initialization component pending a validated TEME-to-inertial state-conversion workflow; it is not the selected long-term propagation engine.
+
+The exponential atmosphere and cylindrical SRP shadow are simplified research approximations. Enabling drag, SRP, or third-body forces requires documented physical parameters and consistent ephemerides. DOP853 controls numerical integration error; it does not remove errors in the force model or initial orbit.
 
 ## Install
+
 Python 3.10+ is recommended.
 
 ```bash
@@ -28,19 +35,29 @@ pip install -e ".[dev]"
 ```
 
 ## Tests
+
 ```bash
 pytest
 ```
 
-## CLI
-```bash
-orion-ahop inspect data/sample/example_omm.kvn
+## Current numerical example
+
+```python
+from datetime import datetime, timezone
+from orion_ahop.propagators import ForceModelConfig, propagate_cowell
+
+result = propagate_cowell(
+    position_km=(7000.0, 0.0, 0.0),
+    velocity_km_s=(0.0, 7.5, 0.0),
+    epoch=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    duration_s=86400.0,
+    force_model=ForceModelConfig(include_j2=True),
+)
+
+if not result.success:
+    raise RuntimeError(result.message)
 ```
 
-## Adaptive score
-For normalized indicators in [0, 1]:
-`S = w_U U + w_D D + w_C C`
-Weights are non-negative and sum to one. Missing indicators are excluded and remaining weights renormalized. Initial thresholds (0.35 and 0.70) are provisional and require calibration.
-
 ## Research integrity
-Synthetic sample data is labeled. No performance results are claimed. Record data provenance, software versions, coordinate frames, time systems, force-model assumptions, and evaluation settings in experiments.
+
+No accuracy or performance advantage is claimed until the engine is tested against an independent reference trajectory. Record data provenance, software versions, coordinate frames, time systems, force-model assumptions, physical parameters, solver tolerances, and evaluation settings in every experiment.
