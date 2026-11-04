@@ -1,3 +1,4 @@
+
 name: Acquire Space-Track CDM Cartesian states
 
 on:
@@ -29,9 +30,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: work/orion-cdm-cartesian-acquisition
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      # NEW STEP: Install required Python packages
+      - name: Install ORION-X dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
       - name: Acquire public CDM state vectors
         env:
           SPACETRACK_IDENTITY: ${{ secrets.SPACETRACK_IDENTITY }}
@@ -40,6 +49,7 @@ jobs:
           python scripts/acquire_spacetrack_cdm_states.py \
             --start-date "${{ inputs.start_date }}" \
             --end-date "${{ inputs.end_date }}"
+
       - name: Upload raw CDMs, unique object states, and provenance report
         uses: actions/upload-artifact@v4
         with:
@@ -50,3 +60,4 @@ jobs:
             data/spacetrack-cdm-acquisition/spacetrack_cdm_acquisition_report.json
           if-no-files-found: error
           retention-days: 14
+
