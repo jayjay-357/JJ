@@ -32,6 +32,8 @@ def main() -> None:
         for record in records:
             row = {key: getattr(record, key) for key in columns}
             row["match_ids"] = "/".join(record.match_ids)
+            row["rms_values_km"] = "/".join("hist_or_missing" if value is None else str(value) for value in record.rms_values_km)
+            row["correct_name_flags"] = "/".join(str(value).lower() for value in record.correct_name_flags)
             writer.writerow(row)
     epoch_match = re.search(r"^# Epoch:\s*(.+?)\s*$", raw, flags=re.MULTILINE)
     counts = {
