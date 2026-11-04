@@ -27,7 +27,7 @@ def test_conservative_match_screening():
     assert records[4].disposition == "MANUAL_REVIEW"
 
 def test_rejects_duplicate_hardware_ids():
-    duplicate = SAMPLE + "24ae Another Name NAME 60519 2.4 60519 True True - -\n"
+    duplicate = SAMPLE + "24ae Another_Name NAME 60519 2.4 60519 True True - -\n"
     with pytest.raises(ValueError, match="Duplicate Planet hardware ID"):
         parse_planet_matching_text(duplicate)
 
