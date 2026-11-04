@@ -30,10 +30,10 @@ def _optional_text(value: str) -> str | None:
 
 def _is_rms_list(value: str) -> bool:
     parts = value.split("/")
-    return bool(parts) and all(part.lower() == "hist" or _optional_number(part) is not None for part in parts)
+    return bool(parts) and all(part in {"-", ""} or part.lower() == "hist" or _optional_number(part) is not None for part in parts)
 
 def _is_match_list(value: str) -> bool:
-    return bool(value) and all(re.fullmatch(r"[A-Za-z0-9_-]+", part) for part in value.split("/"))
+    return value == "-" or (bool(value) and all(re.fullmatch(r"[A-Za-z0-9_-]+", part) for part in value.split("/")))
 
 def _is_flag_list(value: str) -> bool:
     return bool(value) and all(part.lower() in {"true", "false"} for part in value.split("/"))
@@ -77,7 +77,7 @@ def parse_planet_matching_text(text: str) -> list[PlanetCatalogMatch]:
         if len(fields) != column_index + 7:
             raise ValueError(f"Unexpected trailing fields on matching report line {line_number}: {fields!r}")
         rms_values = tuple(_optional_number(value) for value in rms_raw.split("/"))
-        match_ids = tuple(matches_raw.split("/"))
+        match_ids = tuple() if matches_raw == "-" else tuple(matches_raw.split("/"))
         correct_flags = tuple(value.lower() == "true" for value in flags_raw.split("/"))
         catalogued = catalogued_raw.lower() == "true"
         catalog_id = _optional_text(catid)
