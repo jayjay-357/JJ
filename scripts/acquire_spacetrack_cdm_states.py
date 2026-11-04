@@ -12,6 +12,11 @@ import json
 import os
 import sys
 import time
+import numpy as np
+from astropy import units as u
+from astropy.coordinates import CartesianDifferential, CartesianRepresentation, GCRS, ITRS
+from astropy.time import Time
+from astropy.utils import iers
 from datetime import date, datetime, timedelta, timezone
 from http.cookiejar import CookieJar
 from pathlib import Path
@@ -35,7 +40,7 @@ OUT_FIELDS = (
     "norad_cat_id", "object_name", "object_type", "epoch_utc", "cdm_id",
     "source_created_utc", "orbit_center", "source_frame",
     "x_km", "y_km", "z_km", "vx_km_s", "vy_km_s", "vz_km_s",
-    "state_epoch_semantics", "source", "propagation_status",
+    "state_epoch_semantics", "source", "normalized_frame", "frame_transform", "propagation_status",
 )
 
 
@@ -97,6 +102,28 @@ def extract_object(row: dict, prefix: str) -> dict | None:
     speed = sum(component * component for component in v) ** 0.5
     if not (6370.0 < radius < 100000.0 and 0.1 < speed < 20.0):
         return None
+    normalized_frame = frame
+    transform_name = "NONE"
+    status = "FRAME_TRANSFORM_REQUIRED"
+    if frame == "GCRS":
+        status = "READY_GCRS"
+    elif frame in {"ITRF", "ITRS"}:
+        try:
+            obstime = Time(epoch, scale="utc")
+            representation = CartesianRepresentation(
+                np.asarray(p) * u.km,
+                differentials=CartesianDifferential(np.asarray(v) * u.km / u.s),
+            )
+            source_state = ITRS(representation, obstime=obstime)
+            with iers.conf.set_temp("auto_download", True):
+                transformed = source_state.transform_to(GCRS(obstime=obstime))
+            p = transformed.cartesian.xyz.to_value(u.km).tolist()
+            v = transformed.cartesian.differentials["s"].d_xyz.to_value(u.km / u.s).tolist()
+            normalized_frame = "GCRS"
+            transform_name = "Astropy ITRS-to-GCRS with IERS Earth-orientation data"
+            status = "READY_GCRS"
+        except Exception as exc:
+            transform_name = f"ITRS_TO_GCRS_FAILED: {type(exc).__name__}: {exc}"
     return {
         "norad_cat_id": designator,
         "object_name": str(row.get(f"{prefix}_OBJECT_NAME") or "").strip(),
@@ -110,9 +137,9 @@ def extract_object(row: dict, prefix: str) -> dict | None:
         "vx_km_s": v[0], "vy_km_s": v[1], "vz_km_s": v[2],
         "state_epoch_semantics": "CDM state vector at TCA",
         "source": "Space-Track CDMPublic",
-        # No frame conversion is performed here. Only GCRS is directly
-        # accepted by the current Cowell engine.
-        "propagation_status": "READY_GCRS" if frame == "GCRS" else "FRAME_TRANSFORM_REQUIRED",
+        "normalized_frame": normalized_frame,
+        "frame_transform": transform_name,
+        "propagation_status": status,
     }
 
 
@@ -230,10 +257,13 @@ def main() -> int:
         "unique_objects_by_type": counts,
         "unique_objects_by_source_frame": frames,
         "unique_objects_in_current_cowell_frame_gcrs": sum(
-            item["source_frame"] == "GCRS" for item in unique
+            item["normalized_frame"] == "GCRS" for item in unique
         ),
-        "unique_objects_requiring_frame_transformation": sum(
-            item["source_frame"] != "GCRS" for item in unique
+        "unique_objects_ready_for_current_cowell_engine": sum(
+            item["propagation_status"] == "READY_GCRS" for item in unique
+        ),
+        "unique_objects_requiring_frame_transformation_or_review": sum(
+            item["propagation_status"] != "READY_GCRS" for item in unique
         ),
         "target_unique_objects": 10000,
         "target_reached_at_catalog_state_level": len(unique) >= 10000,
@@ -243,8 +273,8 @@ def main() -> int:
         "important_limitations": [
             "A CDM state is a single state at time of closest approach, not a continuous ephemeris.",
             "Each object is represented by its latest retrieved TCA state.",
-            "Source reference frames are preserved; this script performs no frame transformation.",
-            "Only GCRS states are directly accepted by the current Cowell engine.",
+            "ITRF/ITRS states are transformed to GCRS with Astropy and IERS Earth-orientation data when available.",
+            "Unsupported frames remain unnormalized and are not counted as Cowell-ready.",
             "No SGP4 is invoked and no GP/TLE mean elements are converted.",
             "A state being syntactically valid does not establish its orbit-determination accuracy.",
             "CDMPublic coverage is conjunction-biased and must not be treated as a representative debris census.",
