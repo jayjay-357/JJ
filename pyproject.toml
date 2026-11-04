@@ -21,3 +21,4 @@ include = ["orion_ahop*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
