@@ -51,7 +51,7 @@ def parse_planet_matching_text(text: str) -> list[PlanetCatalogMatch]:
         if hwid in seen:
             raise ValueError(f"Duplicate Planet hardware ID {hwid!r} on line {line_number}.")
         if correct_raw.lower() not in {"true", "false"} or catalogued_raw.lower() not in {"true", "false"}:
-            raise ValueError(f"Invalid boolean flag on matching report line {line_number}.")
+            raise ValueError(f"Invalid boolean flag on matching report line {line_number}: {fields!r}")
         correct_name = correct_raw.lower() == "true"
         catalogued = catalogued_raw.lower() == "true"
         catalog_id = _optional_text(catid)
