@@ -32,7 +32,7 @@ def test_rejects_duplicate_hardware_ids():
         parse_planet_matching_text(duplicate)
 
 def test_rejects_wrong_column_count():
-    with pytest.raises(ValueError, match="10 columns"):
+    with pytest.raises(ValueError, match="at least 10 fields"):
         parse_planet_matching_text("24ae name name 123 1.0 123 True True -")
 
 def test_rejects_invalid_boolean_flag():
