@@ -44,7 +44,7 @@ def test_rejects_wrong_column_count():
 
 
 def test_rejects_nonfinite_state_components():
-    row = "24ae 839558749.184000 nan 2 3 4 5 6 7 8 9"
+    row = "24ae 839558749.184000 nan 2 3 4 5 6 7 8"
     with pytest.raises(ValueError, match="Non-finite Cartesian"):
         parse_planet_states_text(row)
 
