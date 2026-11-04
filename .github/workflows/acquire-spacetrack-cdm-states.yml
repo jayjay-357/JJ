@@ -1,0 +1,52 @@
+name: Acquire Space-Track CDM Cartesian states
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: First CDM creation date to query (UTC)
+        required: true
+        type: string
+        default: "2018-01-01"
+      end_date:
+        description: Last CDM creation date to query (UTC)
+        required: true
+        type: string
+        default: "2026-11-04"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spacetrack-cdm-acquisition
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/orion-cdm-cartesian-acquisition
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Acquire public CDM state vectors
+        env:
+          SPACETRACK_IDENTITY: ${{ secrets.SPACETRACK_IDENTITY }}
+          SPACETRACK_PASSWORD: ${{ secrets.SPACETRACK_PASSWORD }}
+        run: |
+          python scripts/acquire_spacetrack_cdm_states.py \
+            --start-date "${{ inputs.start_date }}" \
+            --end-date "${{ inputs.end_date }}"
+      - name: Upload raw CDMs, unique object states, and provenance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-spacetrack-cdm-states-${{ github.run_id }}
+          path: |
+            data/spacetrack-cdm-acquisition/spacetrack_cdm_public_raw.jsonl
+            data/spacetrack-cdm-acquisition/spacetrack_cdm_object_states.csv
+            data/spacetrack-cdm-acquisition/spacetrack_cdm_acquisition_report.json
+          if-no-files-found: error
+          retention-days: 14
