@@ -1,5 +1,5 @@
 import pytest
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 
 from orion_ahop.ingestion.planet_states import parse_planet_states_text
 
@@ -28,7 +28,7 @@ def test_parse_planet_state_and_units():
 def test_tt_epoch_is_converted_to_utc():
     record = parse_planet_states_text(SAMPLE)[0]
     expected = (Time("2000-01-01T12:00:00", scale="tt") +
-                (839558749.184000 * __import__("astropy").units.s)).utc.to_datetime()
+                TimeDelta(839558749.184000, format="sec")).utc.to_datetime()
     assert abs((record.state.epoch.replace(tzinfo=None) - expected).total_seconds()) < 1e-5
 
 
